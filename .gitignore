@@ -1,0 +1,13 @@
+scanner/
+node.log
+logs/
+wallets/
+__pycache__/
+*.pem
+.env
+.vercel/
+*.db
+*.stdout
+*.stderr
+simple_test.py
+setup_aws.sh
