@@ -15,6 +15,7 @@ COIN = 100_000_000
 MAX_SUPPLY = 21_000_000_000 * COIN
 INITIAL_REWARD = 10_000 * COIN
 ERA_1_BLOCKS = 14_400  # 10 Days at 60s/block
+MIN_FEE = 1_000_000    # 0.01 HOME
 
 class Block:
     def __init__(self, index: int, valid_transactions: List[Transaction], previous_hash: str, validator: str, timestamp: float = None, nonce: int = 0, target: int = None, rewards: List[Transaction] = None):
@@ -44,14 +45,28 @@ class Block:
     
     @classmethod
     def from_dict(cls, data):
-        reconstructed_txs = [Transaction(**tx_data) if isinstance(tx_data, dict) else tx_data for tx_data in data['transactions']]
+        reconstructed_txs = []
+        for tx_data in data['transactions']:
+            if isinstance(tx_data, dict):
+                tx = Transaction(
+                    sender=tx_data['sender'],
+                    receiver=tx_data['receiver'],
+                    amount=int(tx_data['amount']),
+                    data=tx_data.get('data'),
+                    signature=tx_data.get('signature'),
+                    timestamp=tx_data.get('timestamp')
+                )
+                reconstructed_txs.append(tx)
+            else:
+                reconstructed_txs.append(tx_data)
+
         reconstructed_rewards = []
         if 'rewards' in data:
             for r_data in data['rewards']:
                 rtx = Transaction(
                     sender=r_data['sender'],
                     receiver=r_data['receiver'],
-                    amount=int(r_data['amount']), # Ensure Integer
+                    amount=int(r_data['amount']), 
                     data=r_data.get('data'),
                     timestamp=r_data.get('timestamp')
                 )
@@ -84,6 +99,7 @@ class Blockchain:
         self.validators = [] # Track all unique validators
         self.reward_queue = [] # Queue for bonus distribution
         self.device_map = {} # Anti-Sybil: {device_id: address}
+        self.balances = {}   # State DB: {address: balance}
         
         # Note: Multi-mining is allowed by default in production.
         
@@ -151,8 +167,12 @@ class Blockchain:
 
     def add_transaction(self, transaction: Transaction) -> bool:
         if transaction.is_valid():
+            # Mandatory Fee Check
+            if transaction.fee < MIN_FEE and transaction.sender != "SYSTEM":
+                return False
+            
             balance = self.get_balance(transaction.sender)
-            if balance < transaction.amount and transaction.sender != "SYSTEM":
+            if balance < (transaction.amount + transaction.fee) and transaction.sender != "SYSTEM":
                 return False
             self.pending_transactions.append(transaction)
             return True
@@ -162,8 +182,9 @@ class Blockchain:
         """Validate transaction without side effects."""
         if not tx.is_valid():
             return False
-        if tx.sender != "SYSTEM" and self.get_balance(tx.sender) < tx.amount:
-            return False
+        if tx.sender != "SYSTEM":
+            if tx.fee < MIN_FEE: return False
+            if self.get_balance(tx.sender) < (tx.amount + tx.fee): return False
         return True
 
     def submit_block(self, block_data: dict) -> bool:
@@ -199,11 +220,15 @@ class Blockchain:
         
         # 1. Calculate Rewards (Integer)
         total_reward = self.get_reward_for_block(new_block.index)
-        finder_reward = total_reward // 2
+        
+        # Aggregate Fees from Transactions
+        total_fees = sum(tx.fee for tx in new_block.transactions)
+        
+        finder_reward = (total_reward // 2) + total_fees
         bonus_pool = total_reward // 2
         
         # Finder Reward
-        finder_rtx = Transaction("SYSTEM", new_block.validator, finder_reward, {"type": "reward_finder"})
+        finder_rtx = Transaction("SYSTEM", new_block.validator, finder_reward, fee=0, data={"type": "reward_finder", "fees_collected": total_fees})
         new_block.rewards.append(finder_rtx)
         
         # Add finder to known validators if new
@@ -252,6 +277,9 @@ class Blockchain:
             self.vm.execute(tx)
         for rtx in new_block.rewards:
             self.vm.execute(rtx)
+        
+        # Update Fast State
+        self.update_state(new_block)
             
         # Adjust difficulty for next block
         self.target = self.adjust_difficulty()
@@ -293,19 +321,42 @@ class Blockchain:
         return [tx.to_dict() for tx in self.pending_transactions]
 
     def get_balance(self, address: str) -> int:
-        balance = 0
+        """Fast O(1) balance lookup from state."""
+        return self.balances.get(address, 0)
+
+    def rebuild_state(self):
+        """Reconstruct balance state from the entire chain on startup."""
+        print("[*] Rebuilding state balances from history...")
+        self.balances = {}
         for block in self.chain:
-            # Check User Transactions
-            for tx in block.transactions:
-                if tx.sender == address:
-                    balance -= tx.amount
-                if tx.receiver == address:
-                    balance += tx.amount
-            # Check Rewards
-            for rtx in block.rewards:
-                if rtx.receiver == address:
-                    balance += rtx.amount
-        return balance
+            self.update_state(block)
+        print(f"[*] State rebuilt. Total accounts: {len(self.balances)}")
+
+    def update_state(self, block: Block):
+        """Update balance state with transactions and rewards from a new block."""
+        # 1. Process Transactions
+        for tx in block.transactions:
+            # Subtract (Amount + Fee) from sender
+            if tx.sender != "SYSTEM":
+                self.balances[tx.sender] = self.balances.get(tx.sender, 0) - (tx.amount + tx.fee)
+            # Add Amount to receiver
+            self.balances[tx.receiver] = self.balances.get(tx.receiver, 0) + tx.amount
+        
+        # 2. Process Rewards
+        for rtx in block.rewards:
+            self.balances[rtx.receiver] = self.balances.get(rtx.receiver, 0) + rtx.amount
+
+    def register_node(self, address: str):
+        """Register a new peer node."""
+        if address and address not in self.nodes:
+            self.nodes.add(address)
+            # Persist nodes list
+            if hasattr(self, 'conn'):
+                nodes_data = json.dumps(list(self.nodes))
+                self.cursor.execute("REPLACE INTO state_vars VALUES ('nodes_list', ?)", (nodes_data,))
+                self.conn.commit()
+            return True
+        return False
 
     # [DATABASE MIGRATION: SQLite]
     def _init_db(self):
@@ -353,6 +404,14 @@ class Blockchain:
                 data = json.loads(row[0])
                 self.reward_queue = data.get("queue", [])
                 self.device_map = data.get("devices", {})
+        except:
+            pass
+
+        try:
+            self.cursor.execute("SELECT value FROM state_vars WHERE key='nodes_list'")
+            row = self.cursor.fetchone()
+            if row:
+                self.nodes = set(json.loads(row[0]))
         except:
             pass
 

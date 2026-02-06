@@ -5,10 +5,11 @@ from ecdsa import SigningKey, SECP256k1, VerifyingKey
 import binascii
 
 class Transaction:
-    def __init__(self, sender: str, receiver: str, amount: int, data: dict = None, signature: str = None, timestamp: float = None):
+    def __init__(self, sender: str, receiver: str, amount: int, fee: int = 1_000_000, data: dict = None, signature: str = None, timestamp: float = None):
         self.sender = sender
         self.receiver = receiver
         self.amount = amount
+        self.fee = fee
         self.data = data or {}
         self.timestamp = timestamp or time.time()
         self.signature = signature
@@ -18,6 +19,7 @@ class Transaction:
             "sender": self.sender,
             "receiver": self.receiver,
             "amount": self.amount,
+            "fee": self.fee,
             "data": self.data,
             "timestamp": self.timestamp,
             "signature": self.signature
