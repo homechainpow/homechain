@@ -106,6 +106,34 @@ async def submit_mining_solution(request):
         print(e)
         return web.json_response({'error': str(e)}, status=500)
 
+async def get_block(request):
+    try:
+        index = int(request.match_info.get('index', 0))
+        if 0 <= index < len(blockchain.chain):
+            return web.json_response(blockchain.chain[index].to_dict())
+        return web.json_response({'error': 'Block not found'}, status=404)
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
+async def get_blocks_range(request):
+    try:
+        start = int(request.query.get('start', 0))
+        end = int(request.query.get('end', len(blockchain.chain)))
+        
+        # Limit batch size to 100 for safety
+        if end - start > 100:
+            end = start + 100
+            
+        blocks = [b.to_dict() for b in blockchain.chain[start:end]]
+        return web.json_response({
+            'start': start,
+            'end': start + len(blocks),
+            'blocks': blocks,
+            'total': len(blockchain.chain)
+        })
+    except Exception as e:
+        return web.json_response({'error': str(e)}, status=500)
+
 async def get_balance(request):
     address = request.match_info.get('address', '')
     balance = blockchain.get_balance(address)
@@ -116,6 +144,8 @@ app = web.Application()
 
 # Routes
 app.router.add_get('/chain', get_chain)
+app.router.add_get('/block/{index}', get_block)
+app.router.add_get('/blocks/range', get_blocks_range)
 app.router.add_post('/transactions/new', new_transaction)
 app.router.add_get('/mining/get-work', get_mining_work)
 app.router.add_post('/mining/submit', submit_mining_solution)

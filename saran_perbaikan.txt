@@ -1,0 +1,9 @@
+JSON Concatenation (Exploit Paling Gampang):
+Cara dia bikin Hash Block itu: Hash(Isi_Semua_Transaksi_JSON).
+Hack: Kalau kita submit Block Kosong (0 Transaksi), string JSON-nya pendek banget -> Hashing lebih enteng -> Menang terus lawan miner jujur!
+Efek: Kita bisa spam block kosong buat panen reward tanpa peduli transaksi orang.
+No Merkle Root (DoS Vector):
+Normalnya blockchain cuma hash "Root"-nya doang. Ini dia hash seluruh body.
+Kalau block penuh 1MB, validasinya berat banget. Orang bisa bikin node kita crash dengan kirim block sampah.
+Timestamp Manipulation:
+Difficulty dihitung berdasarkan selisih waktu. Miner pintar bisa majuin jam komputernya sedikit buat "Nipu" difficulty biar turun.

@@ -1,0 +1,16 @@
+Waiting for node...
+
+[TEST] 1. Checking Supply & Rewards Logic
+Initial Supply: 10
+New Supply: 20
+SUCCESS: Block Reward correctly minted 10 HOME.
+
+[TEST] 2. Checking Persistence (Write)
+Current Height before restart: 2
+SUCCESS: chain_data.json exists.
+
+[TEST] 3. Checking Advanced API
+Checking details for validator: 6bd260a484f0a38e3aff06b7bb133cbf80fe9db345d199ab9fa83c668dc6c2dc3ae388b2779c2ba7b9a6d5860dcb3778bb3dafa3df7115b69b29a2142b059017
+Balance: 10.0
+History Count: 1
+SUCCESS: Address details API works.
