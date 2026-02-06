@@ -139,11 +139,15 @@ async def get_balance(request):
     balance = blockchain.get_balance(address)
     return web.json_response({'address': address, 'balance': balance})
 
+async def get_mempool(request):
+    return web.json_response({'count': len(blockchain.pending_transactions), 'transactions': blockchain.get_pending_txs()})
+
 # Setup App and CORS
 app = web.Application()
 
 # Routes
 app.router.add_get('/chain', get_chain)
+app.router.add_get('/mempool', get_mempool)
 app.router.add_get('/block/{index}', get_block)
 app.router.add_get('/blocks/range', get_blocks_range)
 app.router.add_post('/transactions/new', new_transaction)

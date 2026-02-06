@@ -240,7 +240,13 @@ class Blockchain:
         self.chain.append(new_block)
         
         # Update State / Pending Txs
-        self.pending_transactions = [] 
+        # Only remove transactions that were actually included in the block
+        block_tx_signatures = set()
+        for tx in new_block.transactions:
+            if tx.signature:
+                block_tx_signatures.add(tx.signature)
+        
+        self.pending_transactions = [tx for tx in self.pending_transactions if tx.signature not in block_tx_signatures]
         
         for tx in new_block.transactions:
             self.vm.execute(tx)
