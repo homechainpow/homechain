@@ -52,6 +52,7 @@ class Block:
                     sender=tx_data['sender'],
                     receiver=tx_data['receiver'],
                     amount=int(tx_data['amount']),
+                    fee=int(tx_data.get('fee', 0)),
                     data=tx_data.get('data'),
                     signature=tx_data.get('signature'),
                     timestamp=tx_data.get('timestamp')
