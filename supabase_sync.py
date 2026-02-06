@@ -3,6 +3,7 @@ import time
 import json
 import os
 import sys
+import datetime
 
 # --- CONFIGURATION ---
 NODE_URL = "http://localhost:5005" 
@@ -23,8 +24,12 @@ def get_supabase_height():
         res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
+            print(f"[*] SB Height Raw Data: {data}", flush=True)
             if data:
-                return int(data[0]['id']) + 1
+                h = int(data[0]['id']) + 1
+                print(f"[*] SB Height Check: {h}", flush=True)
+                return h
+            print("[*] SB Height Check: 0 (Empty)", flush=True)
             return 0 # Fresh DB
         print(f"[!] SB Height Error: {res.status_code} - {res.text}", flush=True)
     except Exception as e:
@@ -38,8 +43,6 @@ def post_to_sb(table, data):
         res = requests.post(url, headers=headers, json=data, timeout=15)
         if res.status_code in [200, 201, 204]:
             return True
-        if "duplicate key" in res.text:
-            return True # Gracefully handle already synced data
         print(f"[!] SB Post Error ({table}): {res.status_code} - {res.text}", flush=True)
         return False
     except Exception as e:
@@ -117,7 +120,7 @@ def update_stats(height, supply, difficulty):
         print(f"[!] Update Stats Error: {e}", flush=True)
 
 def main():
-    print("=== HomeChain Supabase Sync Worker V3 Started ===", flush=True)
+    print(f"=== HomeChain Supabase Sync Worker V3 Started at {datetime.datetime.now()} ===", flush=True)
     
     while True:
         try:
@@ -129,8 +132,8 @@ def main():
                 continue
                 
             # 2. Check Node Height & Get Blocks
-            # Fetch batch of 50
-            batch_size = 50
+            # Fetch batch of 100 for speed
+            batch_size = 100
             node_url = f"{NODE_URL}/blocks/range?start={sb_height}&end={sb_height + batch_size}"
             res = requests.get(node_url, timeout=10)
             
@@ -168,13 +171,14 @@ def main():
             for b in blocks:
                 if sync_block(b):
                     synced_in_batch += 1
+                    # Update stats EVERY block for real-time visibility
+                    update_stats(b['index'] + 1, supply, b['target'])
                 else:
                     print(f"[!] Block {b['index']} sync FAILED. Breaking batch.", flush=True)
                     break
             
             if synced_in_batch > 0:
                 last_b = blocks[synced_in_batch-1]
-                update_stats(last_b['index'] + 1, supply, last_b['target'])
                 print(f"[+] Synced up to block #{last_b['index']} (Supply: {supply})", flush=True)
                 
         except Exception as e:

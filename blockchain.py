@@ -319,7 +319,8 @@ class Blockchain:
         return new_target
 
     def get_pending_txs(self):
-        return [tx.to_dict() for tx in self.pending_transactions]
+        # Limit to 100 transactions to keep block data size reasonable for mining speed
+        return [tx.to_dict() for tx in self.pending_transactions[:100]]
 
     def get_balance(self, address: str) -> int:
         """Fast O(1) balance lookup from state."""
