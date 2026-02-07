@@ -78,6 +78,24 @@ class Wallet:
         transaction.sign(self.private_key)
 
     @staticmethod
+    def load_from_pem(file_path: str):
+        """Loads a wallet from a PEM file."""
+        with open(file_path, "r") as f:
+            pem_data = f.read()
+        
+        # Extract the private key bytes (crude extraction for simplicity in this V2)
+        # In a real app we'd use a better parser, but this matches our generate/save flow
+        try:
+            sk = SigningKey.from_pem(pem_data)
+            wallet = Wallet()
+            wallet.private_key = sk
+            wallet.public_key = sk.verifying_key
+            wallet.address = wallet.public_key.to_string().hex()
+            return wallet
+        except Exception as e:
+            raise ValueError(f"Invalid PEM file: {e}")
+
+    @staticmethod
     def generate_dummy_wallet():
         """Generates a wallet for testing purposes."""
         return Wallet()

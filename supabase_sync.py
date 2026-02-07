@@ -17,6 +17,16 @@ headers = {
     "Prefer": "return=minimal"
 }
 
+def is_valid_hex_address(addr):
+    """Validate that address is a proper 128-character hex string."""
+    if not addr or len(addr) != 128:
+        return False
+    try:
+        int(addr, 16)
+        return True
+    except (ValueError, TypeError):
+        return False
+
 def get_supabase_height():
     """Returns the next block index to sync or -1 on error."""
     try:
@@ -76,6 +86,7 @@ def sync_block(b):
             "sender": t.get('sender', 'UNKNOWN'),
             "receiver": t.get('receiver', 'UNKNOWN'),
             "amount": int(t.get('amount', 0)),
+            "fee": int(t.get('fee', 1_000_000)),  # Default 0.01 HOME
             "data": json.dumps(t.get('data')) if isinstance(t.get('data'), (dict, list)) else str(t.get('data')),
             "timestamp": time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(t.get('timestamp', b['timestamp']))),
             "signature": t.get('signature', '')
@@ -99,9 +110,30 @@ def sync_block(b):
 
 def update_stats(height, supply, difficulty):
     """Updates network statistics."""
+    # Get total transaction count from BOTH transactions and rewards tables
+    total_txs = 0
+    try:
+        # Count user transactions
+        tx_count_res = requests.get(f"{SB_URL}/rest/v1/transactions?select=count", headers={**headers, "Range": "0-0"}, timeout=5)
+        if tx_count_res.status_code == 200:
+            data = tx_count_res.json()
+            if data and len(data) > 0:
+                total_txs += data[0].get('count', 0)
+        
+        # Count reward transactions (from miners)
+        reward_count_res = requests.get(f"{SB_URL}/rest/v1/rewards?select=count", headers={**headers, "Range": "0-0"}, timeout=5)
+        if reward_count_res.status_code == 200:
+            data = reward_count_res.json()
+            if data and len(data) > 0:
+                total_txs += data[0].get('count', 0)
+    except Exception as e:
+        print(f"[!] Error counting transactions: {e}", flush=True)
+        total_txs = 0
+    
     payload = {
         "id": 1,
         "height": height,
+        "total_txs": total_txs,  # Now includes both user txs + reward txs
         "last_updated": "now()"
     }
     # Only update supply if we actually got a value

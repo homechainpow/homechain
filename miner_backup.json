@@ -1,0 +1,12 @@
+[
+    {
+        "name": "miner_vps.pem",
+        "pem_path": "wallets\\miner_vps.pem",
+        "address": "c7b31519d42bb3a30a0ddb748c52fa22992c2d77a39ffa586735add35ea3fec50beb2f32a6d86b526595651c9db1d0c40062328aba6909f6643ad4a8178e701c"
+    },
+    {
+        "name": "vps_wallet.pem",
+        "pem_path": "wallets\\vps_wallet.pem",
+        "address": "c7b31519d42bb3a30a0ddb748c52fa22992c2d77a39ffa586735add35ea3fec50beb2f32a6d86b526595651c9db1d0c40062328aba6909f6643ad4a8178e701c"
+    }
+]
