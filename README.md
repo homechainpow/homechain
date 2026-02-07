@@ -1,57 +1,30 @@
-# $HOMEChain 🏠🔗
+# HomeChain Core V2 (Stable 2.11) 🏙️💎🚀
 
-**HomeChain** is a lightweight, Python-based Layer 1 blockchain designed to return crypto mining to the people. It runs on phones, laptops, and $HOME devices.
+## Overview
+HomeChain V2 is a high-performance PoW blockchain with SQLite-based state persistence and PPLNS reward models. This version introduces the **Blockchain-Authoritative Sync** methodology for 100% data accuracy.
 
-![HomeChain Status](https://img.shields.io/badge/Status-Mainnet_Live-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-blue)
-![Consensus](https://img.shields.io/badge/Consensus-PoW_SHA256-orange)
+## Key Methodologies
+### 1. Blockchain-Authoritative Sync
+To ensure the scanner and wallets always reflect the truth, we use a "Replay-from-Genesis" strategy:
+- **Authoritative Source**: The raw block data is the ONLY source of truth.
+- **State Replay**: Balances are calculated by replaying transactions/rewards from Block #0.
+- **Label Resolution**: Legacy labels (e.g., S_994) are mapped to 128-char HEX addresses using PEM-derived manifests during the replay process.
 
-## 🌟 Key Features
+### 2. Database Engine
+- **Engine**: SQLite (via `chain_v2.db`).
+- **Persistence**: Transactions, rewards, and difficulty adjustments are atomically stored.
+- **Pruning**: Support for block pruning to maintain mobile node efficiency.
 
-*   **O(1) Balances**: High-performance state database for instant lookups.
-*   **Economic Security**: Mandatory 0.01 $HOME transaction fee to prevent spam.
-*   **P2P Network**: Decentralized node discovery and mesh connectivity.
-*   **Geometric Decay**: 50-Year Mining Schedule (Halves every era).
+## Security Features
+- **SMA Difficulty**: 144-block window for smooth hashpower adjustments.
+- **MTP Protection**: Timestamp manipulation prevention.
+- **Merkle Roots**: Cryptographic integrity for transaction sets.
 
-## 🚀 Quick Start (Mainnet)
+## Repository Structure
+- `node.py`: Core blockchain node.
+- `consensus.py`: PoW and state transition logic.
+- `supabase_sync.py`: Live production sync worker.
 
-### 1. Setup
-```bash
-git clone https://github.com/homechainpow/homechain.git
-cd $HOMEchain
-pip install -r requirements.txt
-```
-
-### 2. Create Wallet (Secure)
-**Do not use manual addresses!** Create a secure keypair:
-```bash
-python manage_wallet.py create
-# Saves 'my_wallet.pem' - KEEP THIS SAFE!
-```
-
-### 3. Start Mining
-Join the global mesh network:
-```bash
-python miner.py --node http://13.220.55.223:5005 --wallet-file my_wallet.pem --threads 4
-```
-
-### 4. Run a Full Node (P2P)
-Run your own node and connect to the global seed:
-```bash
-python node.py --port 5005
-# Announce your node to the seed:
-curl -X POST -H "Content-Type: application/json" -d '{"address": "http://YOUR_IP:5005"}' http://13.220.55.223:5005/nodes/register
-```
-
-## 📊 Explorer & Stats
-View live blocks at the Official Scanner:
-👉 **[https://homechain-scanner-55p3guxqp-yutupremsatus-projects.vercel.app/](https://homechain-scanner-55p3guxqp-yutupremsatus-projects.vercel.app/)**
-
-Debug & Node Status:
-👉 **[http://13.220.55.223:5005/debug/state](http://13.220.55.223:5005/debug/state)**
-
-## 📜 Roadmap
-Information on future updates (Mobile App, IoT) is in [ROADMAP.md](ROADMAP.md).
-
-## ⚖️ License
-This project is open-source under the **MIT License**.
+---
+*Stable Release: 2.11 (February 2026)*
+🏙️💎🌍🚀
