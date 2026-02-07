@@ -62,7 +62,8 @@ def sync_block(b):
         "validator": b['validator'],
         "tx_count": len(b.get('transactions', [])),
         "reward_count": len(b.get('rewards', [])),
-        "target": str(b['target'])
+        "target": str(b['target']),
+        "difficulty": str(b.get('target', ''))
     }
     if not post_to_sb("blocks", block_data):
         return False
@@ -75,11 +76,12 @@ def sync_block(b):
             "sender": t.get('sender', 'UNKNOWN'),
             "receiver": t.get('receiver', 'UNKNOWN'),
             "amount": int(t.get('amount', 0)),
-            "data": t.get('data'),
+            "data": json.dumps(t.get('data')) if isinstance(t.get('data'), (dict, list)) else str(t.get('data')),
             "timestamp": time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(t.get('timestamp', b['timestamp']))),
             "signature": t.get('signature', '')
         } for t in txs]
-        post_to_sb("transactions", tx_list)
+        if post_to_sb("transactions", tx_list):
+            print(f"[+] Posted {len(tx_list)} transactions for Block #{b['index']}", flush=True)
         
     # 3. Rewards Table
     rewards = b.get('rewards', [])
@@ -170,9 +172,12 @@ def main():
             synced_in_batch = 0
             for b in blocks:
                 if sync_block(b):
+                    sb_height = b['index'] + 1
                     synced_in_batch += 1
-                    # Update stats EVERY block for real-time visibility
-                    update_stats(b['index'] + 1, supply, b['target'])
+                    # Update stats per block for real-time feel
+                    diff_val = b.get('target', '---')
+                    update_stats(b['index'], supply, diff_val)
+                    print(f"[*] Block #{b['index']} synced. (Current SB Height: {sb_height})", flush=True)
                 else:
                     print(f"[!] Block {b['index']} sync FAILED. Breaking batch.", flush=True)
                     break
