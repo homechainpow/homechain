@@ -2,10 +2,12 @@ import argparse
 import json
 import os
 import time
+import math
 from aiohttp import web
 import aiohttp_cors
 from blockchain import Blockchain, MAX_SUPPLY
 from wallet import Wallet, Transaction
+from consensus import ProofOfWork
 
 blockchain = Blockchain()
 

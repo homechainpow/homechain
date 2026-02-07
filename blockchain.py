@@ -18,6 +18,7 @@ INITIAL_REWARD = 10_000 * COIN
 ERA_1_BLOCKS = 14_400  # 10 Days at 60s/block
 PRUNING_WINDOW = 30 * 86400 # 30 Days (Default)
 POLL_COOLDOWN = 10         # 10s between shares for same address
+MIN_FEE = 1_000_000        # 0.01 HOME
 
 class Block:
     def __init__(self, index: int, valid_transactions: List[Transaction], previous_hash: str, validator: str, timestamp: float = None, nonce: int = 0, target: int = None, rewards: List[Transaction] = None, hash: str = None):
@@ -263,13 +264,19 @@ class Blockchain:
         )
         
         # 1. Verify PoW
+        calculated_hash = new_block.compute_hash()
+        if calculated_hash != new_block.hash:
+            print(f"[!] Hash mismatch! Computed: {calculated_hash}, Data: {new_block.hash}")
+            # print(f"    Components: {new_block.index}, {new_block.previous_hash}, {new_block.timestamp}, {new_block.merkle_root}, {new_block.validator}, {new_block.nonce}")
+            return False
+
         if not ProofOfWork.is_valid_proof(new_block.hash, self.target):
             print(f"Invalid PoW: {new_block.hash} >= {self.target}")
             return False
             
         # 2. Verify Block Integrity & Timestamp (MTP)
         if new_block.calculate_merkle_root() != merkle_root:
-            print("[!] Merkle Root mismatch!")
+            print(f"[!] Merkle Root mismatch! Calculated: {new_block.calculate_merkle_root()}, Expected: {merkle_root}")
             return False
 
         if new_block.timestamp <= self.get_median_time_past():

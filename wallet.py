@@ -25,6 +25,18 @@ class Transaction:
             "signature": self.signature
         }
 
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            sender=data.get("sender"),
+            receiver=data.get("receiver"),
+            amount=data.get("amount"),
+            fee=data.get("fee", 1_000_000),
+            data=data.get("data"),
+            signature=data.get("signature"),
+            timestamp=data.get("timestamp")
+        )
+
     def compute_hash(self) -> str:
         """Computes the hash of the transaction (excluding signature)."""
         tx_dict = self.to_dict()

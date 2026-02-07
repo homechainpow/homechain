@@ -10,28 +10,45 @@ import random
 from ecdsa import SigningKey, SECP256k1
 import hashlib
 import json
+import os
 
-NODE_URL = "http://localhost:5005"
+WALLETS_DIR = r"C:\Users\Administrator\.gemini\antigravity\scratch\HomeChain\wallets"
 
 class StressTestBot:
-    def __init__(self, num_wallets=20):
-        print(f"🤖 Initializing Stress Test Bot with {num_wallets} wallets...")
+    def __init__(self, wallets_dir=WALLETS_DIR):
+        print(f"🤖 Initializing Stress Test Bot using wallets from: {wallets_dir}")
         self.wallets = []
         self.node_url = NODE_URL
         
-        # Generate test wallets
-        for i in range(num_wallets):
-            sk = SigningKey.generate(curve=SECP256k1)
-            address = sk.verifying_key.to_string().hex()
-            self.wallets.append({
-                'id': i,
-                'sk': sk,
-                'address': address,
-                'balance': 0
-            })
-            print(f"  ✅ Wallet {i}: {address[:16]}...")
+        # Scan for PEM files
+        if not os.path.exists(wallets_dir):
+            print(f"❌ Error: Wallets directory not found at {wallets_dir}")
+            return
+
+        pem_files = [f for f in os.listdir(wallets_dir) if f.endswith('.pem')]
+        # Filter p1-p100
+        p_wallets = [f for f in pem_files if f.startswith('p') and f[1:-4].isdigit()]
+        p_wallets.sort(key=lambda x: int(x[1:-4])) # Sort p1, p2... p100
+
+        print(f"  📂 Found {len(p_wallets)} test wallets (p1.pem - p{len(p_wallets)}.pem)")
         
-        print(f"\n🚀 Bot Ready! {len(self.wallets)} wallets created.\n")
+        for i, filename in enumerate(p_wallets):
+            pem_path = os.path.join(wallets_dir, filename)
+            try:
+                with open(pem_path, 'r') as f:
+                    sk = SigningKey.from_pem(f.read())
+                    address = sk.verifying_key.to_string().hex()
+                    self.wallets.append({
+                        'id': i + 1,
+                        'name': filename,
+                        'sk': sk,
+                        'address': address,
+                        'balance': 0
+                    })
+            except Exception as e:
+                print(f"  ❌ Error loading {filename}: {e}")
+        
+        print(f"\n🚀 Bot Ready! {len(self.wallets)} wallets available.\n")
     
     def get_balance(self, address):
         """Get balance from node"""
@@ -138,12 +155,16 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='HomeChain V2 Stress Test Bot')
     parser.add_argument('--node', default='http://localhost:5005', help='Node URL')
-    parser.add_argument('--wallets', type=int, default=20, help='Number of test wallets')
+    parser.add_argument('--wallets-dir', default=WALLETS_DIR, help='Directory containing .pem wallets')
     parser.add_argument('--duration', type=int, default=300, help='Test duration in seconds')
     parser.add_argument('--tps', type=float, default=2, help='Target transactions per second')
     args = parser.parse_args()
     
     NODE_URL = args.node
+    WALLETS_DIR = args.wallets_dir
     
-    bot = StressTestBot(num_wallets=args.wallets)
-    bot.run_stress_test(duration_seconds=args.duration, tx_per_second=args.tps)
+    bot = StressTestBot(wallets_dir=WALLETS_DIR)
+    if bot.wallets:
+        bot.run_stress_test(duration_seconds=args.duration, tx_per_second=args.tps)
+    else:
+        print("❌ No wallets found. Exiting.")

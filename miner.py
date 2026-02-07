@@ -95,6 +95,7 @@ def start_miner(node_url, wallet_address, threads=1, throttle=0, device_id='unkn
                 
                 submit_data = work.copy()
                 submit_data['nonce'] = nonce
+                submit_data['hash'] = hash_res
                 submit_data['validator'] = wallet_address
                 
                 res = requests.post(f"{node_url}/mining/submit", json=submit_data)
