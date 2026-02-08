@@ -19,6 +19,7 @@ ERA_1_BLOCKS = 14_400  # 10 Days at 60s/block
 PRUNING_WINDOW = 30 * 86400 # 30 Days (Default)
 POLL_COOLDOWN = 10         # 10s between shares for same address
 MIN_FEE = 1_000_000        # 0.01 HOME
+PREMINE = 1_000_000_000 * COIN
 
 class Block:
     def __init__(self, index: int, valid_transactions: List[Transaction], previous_hash: str, validator: str, timestamp: float = None, nonce: int = 0, target: int = None, rewards: List[Transaction] = None, hash: str = None):
@@ -140,8 +141,7 @@ class Blockchain:
 
     def create_genesis_block(self):
         # Pre-mine 1B coins to SYSTEM for initial airdrops/tests
-        PREMINE = 1_000_000_000 * COIN
-        genesis_tx = Transaction("SYSTEM", "GENESIS", PREMINE, 0, {"message": "HomeChain V2 Genesis - Optimized Mesin"})
+        genesis_tx = Transaction("SYSTEM", "GENESIS", PREMINE, 0, {"message": "HomGenesis"})
         
         # Calculate Merkle Root for Genesis
         merkle_root = ProofOfWork.calculate_merkle_root([genesis_tx.to_dict()])
@@ -374,7 +374,11 @@ class Blockchain:
         """
         WINDOW = 144
         if len(self.chain) < WINDOW:
-            # Fallback to simple proportional if chain is short
+            # [GENESIS WARP] Start very easy for the first 100 blocks
+            if len(self.chain) < 100:
+                # 0x0FFFF... is extremely easy (1 leading zero)
+                return 0x0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+            
             if len(self.chain) < 2: return ProofOfWork.MAX_TARGET
             last = self.chain[-1]
             prev = self.chain[-2]
